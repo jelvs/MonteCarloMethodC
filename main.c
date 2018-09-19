@@ -19,8 +19,8 @@ struct Input{
 /* generate a random floating point number from min to max */
 double fRand()
 {
-    double f = (double)rand() / RAND_MAX;
-    return f * RADIUS;
+   return (double)rand() / RAND_MAX;
+
 }
 
 double calculateDistanceToPoint (double x, double y) {
@@ -101,9 +101,11 @@ int main(int argc, char **argv) {
         total+= rst[i].total;
         inside+=rst[i].inside;
 
-        printf("total Shots: %d\n", rst[i].total);
-        printf("total Shots Inside: %d\n", rst[i].inside);
+    }if(total != numberOfTries){
+        printf("The threads did not perform all of the shots\n");
     }
+
+
 
     double pi = ((double)inside/(double)total)*4;
     printf("Approximation of Pi: %f\n", pi);
