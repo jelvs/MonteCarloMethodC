@@ -6,9 +6,15 @@
 
 #define RADIUS 1
 
-pthread_mutex_t lock;
-int total;
-int inside;
+struct Result{
+    int total;
+    int inside;
+};
+
+struct Input{
+    int numberOfShots;
+    struct Result* resultPointer;
+};
 
 /* generate a random floating point number from min to max */
 double fRand()
@@ -21,26 +27,25 @@ double calculateDistanceToPoint (double x, double y) {
     return sqrt((x * x) + (y * y));
 }
 
-void setTotal (int total1, int inside1) {
+void writeTotal (int total1, int inside1, struct Result* rst) {
+    rst->total = total1;
+    rst->inside = inside1;
 
-    pthread_mutex_lock(&lock); // Locks mutex
-
-    total += total1;
-    inside += inside1;
-
-    pthread_mutex_unlock(&lock); // Unlock mutex
 }
 
 void* approxPi (void *args) {
 
-    int numberOfTries = *(int*) args;
+    struct Input*  input = (struct Input*) args;
+    int numberOfShots = input->numberOfShots;
+
+
     int total = 0;
     int inside = 0;
 
     srand(getpid());
 
     int i;
-    for (i = 0; i < numberOfTries; i++) {
+    for (i = 0; i < numberOfShots; i++) {
         double xCoor = fRand();
         double yCoor = fRand();
 
@@ -52,7 +57,7 @@ void* approxPi (void *args) {
         }
     }
 
-    setTotal(total, inside);
+    writeTotal(total, inside, input->resultPointer);
 
     return NULL;
 }
@@ -70,19 +75,35 @@ int main(int argc, char **argv) {
     numberOfTries = strtol(argv[1], NULL, 0);
     numberOfThreads = strtol(argv[2], NULL, 0);
 
-    total = 0;
-    inside = 0;
+    int  total = 0;
+    int inside = 0;
     int shotsByThread = numberOfTries / numberOfThreads;
-    printf("Shots by thread: %d\n", shotsByThread);
+
+    struct Input inputs[numberOfThreads];
+
+
+    struct Result rst [numberOfThreads];
 
     pthread_t tid[numberOfThreads];
     for (int i = 0; i < numberOfThreads; i++) {
-        int *arg = malloc(sizeof(*arg));
-        *arg = shotsByThread;
-        pthread_create(&tid[i], NULL, approxPi, arg);
+
+        inputs[i].numberOfShots = shotsByThread;
+        inputs[i].resultPointer = &rst[i];
+
+        void* args = (void*) &inputs[i];
+
+        pthread_create(&tid[i], NULL, approxPi, args);
     }
-    for (int i = 0; i < numberOfThreads; i++)
+    for (int i = 0; i<numberOfThreads; i++)
         pthread_join(tid[i], NULL);
+
+    for (int i = 0; i<numberOfThreads; i++){
+        total+= rst[i].total;
+        inside+=rst[i].inside;
+
+        printf("total Shots: %d\n", rst[i].total);
+        printf("total Shots Inside: %d\n", rst[i].inside);
+    }
 
     double pi = ((double)inside/(double)total)*4;
     printf("Approximation of Pi: %f\n", pi);
